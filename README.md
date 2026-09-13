@@ -57,6 +57,10 @@ test for exactly this case, with a control beside it.
   one may not. The cell and its checksum are state and are permanent while the cell is.
 - **It does not judge the content.** What comes back is bytes somebody else wrote. If you
   are going to serve them to a browser, sandbox them.
+- **It does not close the client for you.** `@ckb-ccc/core` keeps its sockets open, so a
+  short script that reads one file and stops will sit there afterwards instead of exiting.
+  That is the client, not this package: call `process.exit(0)` when you are done, or close
+  the client yourself. Worth knowing because it looks exactly like a hang on your first try.
 
 ## API
 
