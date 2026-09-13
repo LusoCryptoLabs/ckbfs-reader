@@ -1,0 +1,50 @@
+{
+  "name": "ckbfs-reader",
+  "version": "0.1.0",
+  "description": "Read a CKBFS v3 file off Nervos CKB and verify it against the chain, including every prefix of an append history.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "nervos",
+    "ckb",
+    "ckbfs",
+    "on-chain",
+    "storage",
+    "verification",
+    "web3"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LusoCryptoLabs/ckbfs-reader.git"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --test \"test/**/*.test.ts\"",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "prepublishOnly": "npm run build && npm test"
+  },
+  "peerDependencies": {
+    "@ckb-ccc/core": ">=1.12.5"
+  },
+  "devDependencies": {
+    "@ckb-ccc/core": "1.12.5",
+    "typescript": "^5.6.0"
+  }
+}
