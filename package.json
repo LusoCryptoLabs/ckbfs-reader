@@ -1,6 +1,6 @@
 {
   "name": "ckbfs-reader",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Read a CKBFS v3 file off Nervos CKB and verify it against the chain, including every prefix of an append history.",
   "license": "MIT",
   "type": "module",

@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { ccc } from '@ckb-ccc/core'
-import { adler32, decodeCkbfsData, readSegment, joinVerified, joinSegments, typeIdOf, CkbfsError } from '../src/index.ts'
+import { adler32, decodeCkbfsData, readSegment, joinVerified, joinSegments, typeIdOf, CkbfsError, isCkbfsV3, ckbfsV3Scripts, CKBFS_V3, CKBFS_V3_BY_TYPE } from '../src/index.ts'
 
 const enc = new TextEncoder()
 const hex = (b: Uint8Array) => ccc.hexFrom(b) as `0x${string}`
@@ -147,6 +147,7 @@ test('only the type-id form of a ckbfs:// URI is followable', () => {
   assert.equal(typeIdOf(`  ckbfs://${id.toUpperCase()}  `), `0x${id}`)
   // An outpoint URI is valid CKBFS and cannot be followed across an append, so it is
   // refused here rather than resolved into something that goes stale.
+  assert.equal(typeIdOf(`ckbfs://0x${id}`), `0x${id}`)
   assert.equal(typeIdOf(`ckbfs://${'b'.repeat(64)}i0`), null)
   assert.equal(typeIdOf('https://example.com'), null)
 })
@@ -156,4 +157,17 @@ test('joinSegments returns the bytes without checking them, and says so by its n
   // separate from joinVerified precisely so that not checking has to be chosen.
   const segs = [{ bytes: enc.encode('x'), back: null }]
   assert.deepEqual(joinSegments(segs), enc.encode('x'))
+})
+
+test('a file cell may refer to the CKBFS v3 script by data hash or by type, on its own network only', () => {
+  const testnet = { addressPrefix: 'ckt' } as never, mainnet = { addressPrefix: 'ckb' } as never
+  assert.equal(isCkbfsV3(testnet, CKBFS_V3), true)
+  assert.equal(isCkbfsV3(testnet, CKBFS_V3_BY_TYPE.testnet), true)
+  assert.equal(isCkbfsV3(mainnet, CKBFS_V3_BY_TYPE.mainnet), true)
+  // the controls: the other network's type id, the right hash with the wrong hash type, nothing
+  assert.equal(isCkbfsV3(testnet, CKBFS_V3_BY_TYPE.mainnet), false)
+  assert.equal(isCkbfsV3(mainnet, CKBFS_V3_BY_TYPE.testnet), false)
+  assert.equal(isCkbfsV3(testnet, { codeHash: CKBFS_V3.codeHash, hashType: 'type' }), false)
+  assert.equal(isCkbfsV3(testnet, null), false)
+  assert.deepEqual(ckbfsV3Scripts(mainnet).map((s) => s.hashType), ['data1', 'type'])
 })

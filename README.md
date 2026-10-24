@@ -46,6 +46,15 @@ been truncated or spliced, as long as the total still lands on the right number,
 is easy to land on a chosen number. Verifying each prefix does not accept that. There is a
 test for exactly this case, with a control beside it.
 
+## Both ways a cell can refer to the script
+
+A CKBFS v3 file's cell names the CKBFS script either by its code's data hash (`data1`, what
+`@ckbfs/api` writes by default) or by its deployment's type id (`type`, what it writes with
+`useTypeID: true`). That option is easy to misread: it is about how the cell refers to the script,
+not about the file's own id, which is the type id in the cell's args either way. This reads both.
+The data hash is pinned; a type id can be upgraded by whoever owns it, which does not change what
+you get here, because the content is checked against the cell's own checksum either way.
+
 ## What it does not do
 
 - **It does not publish.** No signing, no keys, no transactions.
@@ -68,13 +77,15 @@ test for exactly this case, with a control beside it.
 |---|---|
 | `readUri(client, 'ckbfs://…')` | the file a type id names, verified, or `null` if no live cell carries it |
 | `readFile(client, cell)` | the same, when you already have the cell |
-| `cellForTypeId(client, typeId)` | the one live cell with that type id; two is an error, not a guess |
+| `cellForTypeId(client, typeId)` | the one live cell with that type id, whichever way it refers to the script; two is an error, not a guess |
 | `decodeCkbfsData(data)` | `CKBFSData` v3: index, checksum, contentType, filename |
 | `readSegment(witnesses, index)` | one publication's bytes, following the witness chain |
 | `joinVerified(segments, checksum)` | join an append history and refuse one that does not add up |
 | `joinSegments(segments)` | join it without checking, which you have to ask for by name |
 | `adler32(bytes)` | what CKBFS checksums with |
-| `typeIdOf(uri)` | the type id in a `ckbfs://` URI, or null |
+| `typeIdOf(uri)` | the type id in a `ckbfs://` URI, with or without `0x`, or null |
+| `isCkbfsV3(client, script)` | whether a type script is CKBFS v3 on the client's network, by data hash or by type |
+| `ckbfsV3Scripts(client)` | the two ways a file's cell can refer to CKBFS v3 on that network |
 
 Everything throws `CkbfsError` rather than returning doubtful bytes.
 

@@ -27,6 +27,30 @@ export const CKBFS_V3 = {
   hashType: 'data1' as const,
 }
 
+/**
+ * The same CKBFS v3 script, referred to by its deployment's type id: what `@ckbfs/api` writes when
+ * it is given `useTypeID: true`. That option is about how a cell refers to the script, not about the
+ * file's own id, which is the type id in the cell's args either way. A type id can be upgraded by
+ * its owner where a data hash cannot; reading stays safe, because the content is checked against
+ * the cell's own checksum whatever script guarded the cell. From `@ckbfs/api`'s CKBFS_TYPE_ID.
+ */
+export const CKBFS_V3_BY_TYPE = {
+  mainnet: { codeHash: '0xcc5411e8b70e551d7a3dd806256533cff6bc12118b48dd7b2d5d2292c3651add' as const, hashType: 'type' as const },
+  testnet: { codeHash: '0xaebf5a7b541da9603c2066a9768d3d18fea2e7f3c1943821611545155fecc671' as const, hashType: 'type' as const },
+}
+
+/** The CKBFS v3 type scripts a file's cell can carry on this client's network: by data hash, by type. */
+export function ckbfsV3Scripts(client: ccc.Client): { codeHash: ccc.Hex; hashType: 'data1' | 'type' }[] {
+  return [CKBFS_V3, client.addressPrefix === 'ckb' ? CKBFS_V3_BY_TYPE.mainnet : CKBFS_V3_BY_TYPE.testnet]
+}
+
+/** Whether a type script is CKBFS v3, referred to either way, on this client's network. */
+export function isCkbfsV3(client: ccc.Client, script: { codeHash: ccc.HexLike; hashType: ccc.HashTypeLike } | null | undefined): boolean {
+  if (!script) return false
+  const code = ccc.hexFrom(script.codeHash), type = ccc.hashTypeFrom(script.hashType)
+  return ckbfsV3Scripts(client).some((s) => s.codeHash === code && s.hashType === type)
+}
+
 const dec = new TextDecoder()
 const ZERO32 = '0x' + '00'.repeat(32)
 /** Bounded: each hop is an RPC, and a broken chain must not loop forever. */
@@ -170,19 +194,23 @@ export async function cellForTypeId(
   client: ccc.Client,
   typeId: ccc.Hex,
 ): Promise<{ outPoint: ccc.OutPoint; outputData: ccc.Hex } | null> {
-  const script = ccc.Script.from({ codeHash: CKBFS_V3.codeHash, hashType: CKBFS_V3.hashType, args: typeId })
   let found: { outPoint: ccc.OutPoint; outputData: ccc.Hex } | null = null
   let n = 0
-  for await (const cell of client.findCells({ script, scriptType: 'type', scriptSearchMode: 'exact' }, 'asc', 2)) {
-    found = { outPoint: cell.outPoint, outputData: cell.outputData as ccc.Hex }
-    if (++n > 1) throw new CkbfsError(`two live cells carry the type id ${typeId}`)
+  // the file's cell refers to the script by data hash or by type; one live cell in all, never two
+  for (const s of ckbfsV3Scripts(client)) {
+    const script = ccc.Script.from({ codeHash: s.codeHash, hashType: s.hashType, args: typeId })
+    for await (const cell of client.findCells({ script, scriptType: 'type', scriptSearchMode: 'exact' }, 'asc', 2)) {
+      found = { outPoint: cell.outPoint, outputData: cell.outputData as ccc.Hex }
+      if (++n > 1) throw new CkbfsError(`two live cells carry the type id ${typeId}`)
+    }
   }
   return found
 }
 
-/** The type id inside a `ckbfs://` URI, or null. Only the type-id form is followable. */
+/** The type id inside a `ckbfs://` URI, with or without `0x` (both are in use), or null. Only the
+ *  type-id form is followable. */
 export function typeIdOf(uri: string): ccc.Hex | null {
-  const m = /^ckbfs:\/\/([0-9a-fA-F]{64})$/.exec(uri.trim())
+  const m = /^ckbfs:\/\/(?:0x)?([0-9a-fA-F]{64})$/.exec(uri.trim())
   return m ? (`0x${m[1].toLowerCase()}` as ccc.Hex) : null
 }
 
